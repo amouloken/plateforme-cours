@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cours</title>
+  <title>Cours · MouloAcademy</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
   <header class="site-header">
     <div class="container">
-      <a class="logo" href="index.html" data-site-name>Académie</a>
+      <a class="logo" href="index.html" data-site-name>MouloAcademy</a>
       <nav class="nav" id="nav"></nav>
     </div>
   </header>
@@ -73,7 +73,7 @@
       if (!course) {
         $("#c-title").textContent = "Cours introuvable";
       } else {
-        document.title = course.title;
+        document.title = course.title + " · MouloAcademy";
         $("#c-title").textContent = course.title;
         $("#c-subtitle").textContent = course.subtitle || "";
         $("#c-teacher").textContent = course.teacher?.full_name ? "Par " + course.teacher.full_name : "";

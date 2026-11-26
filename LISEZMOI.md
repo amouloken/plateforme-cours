@@ -1,4 +1,4 @@
-# Plateforme de cours en ligne — guide d'installation
+# MouloAcademy — guide d'installation
 
 Site de cours vidéo (style Udemy) : les enseignants publient des cours à partir de liens YouTube, Vimeo ou Bunny Stream, les élèves créent un compte et achètent les cours avec Stripe.
 

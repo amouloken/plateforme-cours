@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leçon</title>
+  <title>Leçon · MouloAcademy</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
   <header class="site-header">
     <div class="container">
-      <a class="logo" href="index.html" data-site-name>Académie</a>
+      <a class="logo" href="index.html" data-site-name>MouloAcademy</a>
       <nav class="nav" id="nav"></nav>
     </div>
   </header>
@@ -67,7 +67,7 @@
       const lesson = lessons[index];
       if (!lesson) { $("#l-title").textContent = "Leçon introuvable"; return; }
 
-      document.title = lesson.title + " · " + course.title;
+      document.title = lesson.title + " · " + course.title + " · MouloAcademy";
       $("#l-title").textContent = lesson.title;
 
       // La base ne renvoie la vidéo que si l'élève a acheté le cours (ou si c'est un aperçu gratuit)
