@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mes cours</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="index.html" data-site-name>Académie</a>
+      <nav class="nav" id="nav"></nav>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="container">
+        <h1 class="section-title">Mes cours</h1>
+        <p class="section-sub" id="hello"></p>
+        <div id="msg" class="notice hidden"></div>
+        <div id="list" class="grid"><p class="muted">Chargement…</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span data-year></span> <span data-site-name></span></span>
+      <span><a href="mentions-legales.html">Mentions légales &amp; CGV</a></span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase, renderLayout, requireUser, courseCard, $ } from "./assets/app.js";
+
+    const { profile } = await renderLayout();
+    const user = supabase ? await requireUser() : null;
+    if (user) {
+      $("#hello").textContent = "Bonjour " + (profile?.full_name || user.email) + ", retrouvez ici les cours auxquels vous avez accès.";
+      const { data = [] } = await supabase
+        .from("enrollments")
+        .select("course:courses(id, slug, title, subtitle, cover_url, price_cents, currency, teacher:profiles(full_name))")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      const courses = data.map((e) => e.course).filter(Boolean);
+      $("#list").innerHTML = courses.length
+        ? courses.map(courseCard).join("").replaceAll(/<div class="price">.*?<\/div>/g, '<div class="price"><span class="badge badge-success">Accès à vie</span></div>')
+        : `<div class="card"><p>Vous n'avez encore aucun cours.</p><a class="btn" href="index.html#cours">Voir le catalogue</a></div>`;
+    }
+  </script>
+</body>
+</html>

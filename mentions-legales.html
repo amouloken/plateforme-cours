@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mentions légales et CGV</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="index.html" data-site-name>Académie</a>
+      <nav class="nav" id="nav"></nav>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="container" style="max-width:800px">
+        <div class="card">
+          <h1>Mentions légales</h1>
+          <p><strong>Éditeur :</strong> [Votre nom ou société] — [Adresse] — [SIRET] — [E-mail de contact]</p>
+          <p><strong>Hébergement :</strong> GitHub Pages (GitHub Inc.), données des comptes hébergées par Supabase, paiements traités par Stripe.</p>
+          <h2>Conditions générales de vente</h2>
+          <p>[À compléter : prix TTC, accès aux cours, durée de l'accès, droit de rétractation pour les contenus numériques, remboursement, contact.]</p>
+          <h2>Données personnelles</h2>
+          <p>[À compléter : données collectées (e-mail, nom, achats), finalité, durée de conservation, droits d'accès et de suppression.]</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span data-year></span> <span data-site-name></span></span>
+      <span><a href="mentions-legales.html">Mentions légales &amp; CGV</a></span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { renderLayout } from "./assets/app.js";
+    renderLayout();
+  </script>
+</body>
+</html>

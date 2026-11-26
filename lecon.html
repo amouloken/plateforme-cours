@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leçon</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="index.html" data-site-name>Académie</a>
+      <nav class="nav" id="nav"></nav>
+    </div>
+  </header>
+
+  <main>
+    <section style="padding-top:32px">
+      <div class="container">
+        <p><a id="back" href="index.html">← Retour au cours</a></p>
+        <div class="player-layout">
+          <div class="player-main">
+            <div id="player"></div>
+            <h1 id="l-title" style="margin:20px 0 8px">Chargement…</h1>
+            <div id="l-notes" class="muted" style="white-space:pre-line"></div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:20px">
+              <a id="prev" class="btn btn-outline btn-small hidden">← Précédente</a>
+              <button id="done" class="btn btn-small hidden" type="button">Marquer comme terminée</button>
+              <a id="next" class="btn btn-small hidden">Suivante →</a>
+            </div>
+          </div>
+          <aside class="player-side card">
+            <h3 id="c-title" style="margin-top:0"></h3>
+            <ul id="lessons" class="lesson-list"></ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span data-year></span> <span data-site-name></span></span>
+      <span><a href="mentions-legales.html">Mentions légales &amp; CGV</a></span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase, renderLayout, param, escapeHtml, videoPlayerHtml, $ } from "./assets/app.js";
+
+    const { user } = await renderLayout();
+    const slug = param("c");
+    const lessonId = param("l");
+    const courseLink = "cours.html?c=" + encodeURIComponent(slug || "");
+    $("#back").href = courseLink;
+
+    async function load() {
+      if (!supabase || !slug || !lessonId) { $("#l-title").textContent = "Leçon introuvable"; return; }
+
+      const { data: course } = await supabase.from("courses").select("id, title, teacher_id").eq("slug", slug).maybeSingle();
+      if (!course) { $("#l-title").textContent = "Cours introuvable"; return; }
+      $("#c-title").textContent = course.title;
+
+      const { data: lessons = [] } = await supabase
+        .from("lessons").select("id, title, position, is_free_preview, notes").eq("course_id", course.id).order("position");
+      const index = lessons.findIndex((l) => l.id === lessonId);
+      const lesson = lessons[index];
+      if (!lesson) { $("#l-title").textContent = "Leçon introuvable"; return; }
+
+      document.title = lesson.title + " · " + course.title;
+      $("#l-title").textContent = lesson.title;
+
+      // La base ne renvoie la vidéo que si l'élève a acheté le cours (ou si c'est un aperçu gratuit)
+      const { data: media } = await supabase.from("lesson_videos").select("video_url").eq("lesson_id", lesson.id).maybeSingle();
+      if (media?.video_url) {
+        $("#player").innerHTML = videoPlayerHtml(media.video_url);
+        $("#l-notes").textContent = lesson.notes || "";
+      } else {
+        $("#player").innerHTML = `<div class="card" style="text-align:center">
+          <h2>🔒 Leçon réservée aux inscrits</h2>
+          <p class="muted">Achetez le cours pour accéder à toutes les vidéos.</p>
+          <a class="btn" href="${courseLink}">Voir le cours</a></div>`;
+      }
+
+      // Progression
+      let doneIds = new Set();
+      if (user) {
+        const { data: prog = [] } = await supabase.from("lesson_progress").select("lesson_id").eq("user_id", user.id)
+          .in("lesson_id", lessons.map((l) => l.id));
+        doneIds = new Set(prog.map((p) => p.lesson_id));
+        if (media?.video_url) {
+          const btn = $("#done");
+          btn.classList.remove("hidden");
+          const refresh = () => { btn.textContent = doneIds.has(lesson.id) ? "✓ Terminée" : "Marquer comme terminée"; btn.classList.toggle("btn-outline", doneIds.has(lesson.id)); };
+          refresh();
+          btn.onclick = async () => {
+            if (doneIds.has(lesson.id)) {
+              await supabase.from("lesson_progress").delete().eq("user_id", user.id).eq("lesson_id", lesson.id);
+              doneIds.delete(lesson.id);
+            } else {
+              await supabase.from("lesson_progress").upsert({ user_id: user.id, lesson_id: lesson.id });
+              doneIds.add(lesson.id);
+            }
+            refresh(); renderList();
+          };
+        }
+      }
+
+      function renderList() {
+        $("#lessons").innerHTML = lessons.map((l, i) => `
+          <li class="${l.id === lesson.id ? "active" : ""}">
+            <a href="lecon.html?c=${encodeURIComponent(slug)}&l=${l.id}">${i + 1}. ${escapeHtml(l.title)}</a>
+            <span>${doneIds.has(l.id) ? "✓" : ""}</span>
+          </li>`).join("");
+      }
+      renderList();
+
+      const prev = lessons[index - 1], next = lessons[index + 1];
+      if (prev) { $("#prev").href = `lecon.html?c=${encodeURIComponent(slug)}&l=${prev.id}`; $("#prev").classList.remove("hidden"); }
+      if (next) { $("#next").href = `lecon.html?c=${encodeURIComponent(slug)}&l=${next.id}`; $("#next").classList.remove("hidden"); }
+    }
+    load();
+  </script>
+</body>
+</html>

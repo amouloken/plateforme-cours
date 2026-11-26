@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="index.html" data-site-name>Académie</a>
+      <nav class="nav" id="nav"></nav>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="container auth-box">
+        <div class="card">
+          <div class="tabs">
+            <button type="button" data-tab="connexion" class="active">Connexion</button>
+            <button type="button" data-tab="inscription">Créer un compte</button>
+          </div>
+
+          <div id="msg" class="notice hidden"></div>
+
+          <form id="form-auth" class="form">
+            <label id="field-name" class="hidden">Nom complet
+              <input type="text" name="full_name" autocomplete="name">
+            </label>
+            <label>Adresse e-mail
+              <input type="email" name="email" required autocomplete="email">
+            </label>
+            <label>Mot de passe
+              <input type="password" name="password" required minlength="8" autocomplete="current-password">
+            </label>
+            <button class="btn" type="submit" id="submit">Se connecter</button>
+            <a href="#" id="forgot" class="muted" style="font-size:.9rem">Mot de passe oublié ?</a>
+          </form>
+
+          <form id="form-reset" class="form hidden">
+            <h2 style="margin:0">Nouveau mot de passe</h2>
+            <label>Nouveau mot de passe
+              <input type="password" name="password" required minlength="8" autocomplete="new-password">
+            </label>
+            <button class="btn" type="submit">Enregistrer</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span data-year></span> <span data-site-name></span></span>
+      <span><a href="mentions-legales.html">Mentions légales &amp; CGV</a></span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase, renderLayout, getUser, param, showNotice, $ } from "./assets/app.js";
+
+    await renderLayout();
+    const msg = $("#msg");
+    const form = $("#form-auth");
+    const retour = param("retour") || "mes-cours.html";
+    let mode = param("mode") === "inscription" ? "inscription" : "connexion";
+
+    function setMode(m) {
+      mode = m;
+      document.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("active", b.dataset.tab === m));
+      $("#field-name").classList.toggle("hidden", m !== "inscription");
+      $("#submit").textContent = m === "inscription" ? "Créer mon compte" : "Se connecter";
+      form.password.autocomplete = m === "inscription" ? "new-password" : "current-password";
+    }
+    document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.tab)));
+    setMode(mode);
+
+    if (supabase) {
+      // Lien "mot de passe oublié" reçu par e-mail
+      supabase.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") {
+          form.classList.add("hidden");
+          document.querySelector(".tabs").classList.add("hidden");
+          $("#form-reset").classList.remove("hidden");
+        }
+      });
+      if (!location.hash.includes("type=recovery") && (await getUser())) location.href = retour;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!supabase) return showNotice(msg, "Supabase n'est pas encore configuré.", "error");
+      const email = form.email.value.trim();
+      const password = form.password.value;
+      $("#submit").disabled = true;
+
+      if (mode === "inscription") {
+        const { data, error } = await supabase.auth.signUp({
+          email, password,
+          options: {
+            data: { full_name: form.full_name.value.trim() },
+            emailRedirectTo: new URL("connexion.html", location.href).href,
+          },
+        });
+        if (error) showNotice(msg, traduire(error.message), "error");
+        else if (data.session) location.href = retour;
+        else showNotice(msg, "Compte créé ! Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.", "success");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) showNotice(msg, traduire(error.message), "error");
+        else location.href = retour;
+      }
+      $("#submit").disabled = false;
+    });
+
+    $("#forgot").addEventListener("click", async (e) => {
+      e.preventDefault();
+      const email = form.email.value.trim();
+      if (!email) return showNotice(msg, "Saisissez d'abord votre adresse e-mail.", "warn");
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: new URL("connexion.html", location.href).href,
+      });
+      showNotice(msg, error ? traduire(error.message) : "Un e-mail de réinitialisation vient de vous être envoyé.", error ? "error" : "success");
+    });
+
+    $("#form-reset").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const { error } = await supabase.auth.updateUser({ password: e.target.password.value });
+      if (error) showNotice(msg, traduire(error.message), "error");
+      else { showNotice(msg, "Mot de passe modifié.", "success"); setTimeout(() => (location.href = "mes-cours.html"), 1200); }
+    });
+
+    function traduire(m) {
+      if (/invalid login/i.test(m)) return "E-mail ou mot de passe incorrect.";
+      if (/already registered/i.test(m)) return "Un compte existe déjà avec cet e-mail.";
+      if (/email not confirmed/i.test(m)) return "Confirmez d'abord votre adresse e-mail (lien reçu par mail).";
+      if (/password/i.test(m)) return "Mot de passe trop court (8 caractères minimum).";
+      return m;
+    }
+  </script>
+</body>
+</html>

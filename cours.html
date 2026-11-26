@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cours</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="index.html" data-site-name>Académie</a>
+      <nav class="nav" id="nav"></nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" style="padding:56px 0">
+      <div class="container">
+        <h1 id="c-title">Chargement…</h1>
+        <p id="c-subtitle"></p>
+        <p id="c-teacher" style="font-size:1rem"></p>
+      </div>
+    </section>
+
+    <section>
+      <div class="container course-layout">
+        <div class="course-main">
+          <div id="msg" class="notice hidden"></div>
+          <div class="card">
+            <h2 style="margin-top:0">Description</h2>
+            <div id="c-desc" style="white-space:pre-line"></div>
+          </div>
+          <div class="card" style="margin-top:24px">
+            <h2 style="margin-top:0">Programme</h2>
+            <ul id="c-lessons" class="lesson-list"></ul>
+          </div>
+        </div>
+
+        <aside class="course-aside card">
+          <img id="c-cover" class="course-cover hidden" alt="" style="border-radius:10px;margin-bottom:16px">
+          <p class="price" id="c-price"></p>
+          <div id="c-action"></div>
+          <p class="muted" style="font-size:.9rem;margin-bottom:0">Accès à vie · Paiement sécurisé par Stripe</p>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span data-year></span> <span data-site-name></span></span>
+      <span><a href="mentions-legales.html">Mentions légales &amp; CGV</a></span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase, renderLayout, param, escapeHtml, formatPrice, showNotice, $ } from "./assets/app.js";
+
+    const { user } = await renderLayout();
+    const msg = $("#msg");
+    const slug = param("c");
+
+    if (!supabase || !slug) {
+      $("#c-title").textContent = "Cours introuvable";
+    } else {
+      const { data: course } = await supabase
+        .from("courses")
+        .select("*, teacher:profiles(full_name, bio)")
+        .eq("slug", slug)
+        .maybeSingle();
+
+      if (!course) {
+        $("#c-title").textContent = "Cours introuvable";
+      } else {
+        document.title = course.title;
+        $("#c-title").textContent = course.title;
+        $("#c-subtitle").textContent = course.subtitle || "";
+        $("#c-teacher").textContent = course.teacher?.full_name ? "Par " + course.teacher.full_name : "";
+        $("#c-desc").textContent = course.description || "";
+        $("#c-price").textContent = formatPrice(course.price_cents, course.currency);
+        if (course.cover_url) { $("#c-cover").src = course.cover_url; $("#c-cover").classList.remove("hidden"); }
+        if (!course.is_published) showNotice(msg, "Brouillon : ce cours n'est visible que par vous.", "warn");
+
+        const { data: lessons = [] } = await supabase
+          .from("lessons")
+          .select("id, title, position, is_free_preview, duration_min")
+          .eq("course_id", course.id)
+          .order("position");
+
+        let enrolled = false;
+        if (user) {
+          const { data: enr } = await supabase
+            .from("enrollments").select("id").eq("course_id", course.id).eq("user_id", user.id).maybeSingle();
+          enrolled = !!enr || course.teacher_id === user.id;
+        }
+
+        // Liste des leçons
+        $("#c-lessons").innerHTML = lessons.length ? lessons.map((l, i) => {
+          const open = enrolled || l.is_free_preview;
+          const label = `${i + 1}. ${escapeHtml(l.title)}`;
+          const link = open ? `<a href="lecon.html?c=${encodeURIComponent(slug)}&l=${l.id}">${label}</a>` : `<span>${label}</span>`;
+          const tag = l.is_free_preview && !enrolled ? `<span class="badge">Aperçu gratuit</span>`
+                    : open ? "" : `<span class="muted">🔒</span>`;
+          const dur = l.duration_min ? `<span class="muted" style="font-size:.85rem">${l.duration_min} min</span>` : "";
+          return `<li>${link}<span style="display:flex;gap:8px;align-items:center">${dur}${tag}</span></li>`;
+        }).join("") : `<li class="muted">Les leçons arrivent bientôt.</li>`;
+
+        // Bouton d'action
+        const action = $("#c-action");
+        const first = lessons[0];
+        if (enrolled) {
+          action.innerHTML = first
+            ? `<a class="btn" href="lecon.html?c=${encodeURIComponent(slug)}&l=${first.id}">Accéder au cours</a>`
+            : `<p class="badge badge-success">Vous êtes inscrit</p>`;
+        } else {
+          action.innerHTML = `<button class="btn" id="buy">${course.price_cents ? "Acheter ce cours" : "S'inscrire gratuitement"}</button>`;
+          $("#buy").addEventListener("click", async () => {
+            if (!user) { location.href = "connexion.html?mode=inscription&retour=" + encodeURIComponent("cours.html?c=" + slug); return; }
+            const btn = $("#buy");
+            btn.disabled = true; btn.textContent = "Patientez…";
+
+            if (!course.price_cents) {
+              const { error } = await supabase.from("enrollments").insert({ user_id: user.id, course_id: course.id, source: "free" });
+              if (error) { showNotice(msg, "Inscription impossible : " + error.message, "error"); btn.disabled = false; return; }
+              location.reload();
+              return;
+            }
+
+            // Cours payant : création d'une session Stripe Checkout côté serveur
+            const { data, error } = await supabase.functions.invoke("create-checkout", { body: { course_id: course.id } });
+            if (error || !data?.url) {
+              showNotice(msg, "Le paiement n'a pas pu démarrer. Réessayez dans un instant.", "error");
+              btn.disabled = false; btn.textContent = "Acheter ce cours";
+              return;
+            }
+            location.href = data.url;
+          });
+        }
+      }
+    }
+  </script>
+</body>
+</html>

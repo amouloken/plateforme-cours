@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Merci pour votre achat</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="index.html" data-site-name>Académie</a>
+      <nav class="nav" id="nav"></nav>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="container" style="max-width:640px;text-align:center">
+        <div class="card">
+          <div style="font-size:3rem">🎉</div>
+          <h1>Merci pour votre achat !</h1>
+          <p id="status" class="muted">Nous activons votre accès…</p>
+          <a id="go" class="btn hidden" href="mes-cours.html">Commencer le cours</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span data-year></span> <span data-site-name></span></span>
+      <span><a href="mentions-legales.html">Mentions légales &amp; CGV</a></span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase, renderLayout, getUser, param, $ } from "./assets/app.js";
+
+    await renderLayout();
+    const slug = param("c");
+    const user = await getUser();
+
+    // Le paiement est confirmé par Stripe via le webhook : on attend quelques secondes que l'accès soit créé.
+    async function check(tries = 0) {
+      if (!supabase || !user || !slug) { $("#status").textContent = "Votre accès sera visible dans « Mes cours »."; $("#go").classList.remove("hidden"); return; }
+      const { data: course } = await supabase.from("courses").select("id").eq("slug", slug).maybeSingle();
+      const { data: enr } = course
+        ? await supabase.from("enrollments").select("id").eq("user_id", user.id).eq("course_id", course.id).maybeSingle()
+        : { data: null };
+      if (enr) {
+        $("#status").textContent = "Votre accès est activé. Bon apprentissage !";
+        $("#go").href = "cours.html?c=" + encodeURIComponent(slug);
+        $("#go").classList.remove("hidden");
+      } else if (tries < 10) {
+        setTimeout(() => check(tries + 1), 2000);
+      } else {
+        $("#status").textContent = "Le paiement est bien reçu, l'accès peut prendre une minute. Actualisez la page ou consultez « Mes cours ». Un souci ? Contactez-nous.";
+        $("#go").classList.remove("hidden");
+      }
+    }
+    check();
+  </script>
+</body>
+</html>

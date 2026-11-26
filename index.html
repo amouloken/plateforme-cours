@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cours en ligne en vidéo</title>
+  <meta name="description" content="Apprenez à votre rythme avec des cours vidéo clairs et pratiques.">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="index.html" data-site-name>Académie</a>
+      <nav class="nav" id="nav"></nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h1>Apprenez à votre rythme, avec des cours vidéo concrets</h1>
+        <p>Des formations pratiques, accessibles à vie après achat, sur ordinateur, tablette et téléphone.</p>
+        <a class="btn" href="#cours">Voir les cours</a>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <h2 class="section-title">Pourquoi apprendre ici&nbsp;?</h2>
+        <p class="section-sub">Une plateforme simple, pensée pour aller à l'essentiel.</p>
+        <div class="grid">
+          <div class="card benefit"><div class="icon">🎥</div><h3>Cours en vidéo</h3><p>Des leçons courtes et organisées, à regarder quand vous voulez.</p></div>
+          <div class="card benefit"><div class="icon">♾️</div><h3>Accès à vie</h3><p>Un paiement unique par cours, et vous gardez l'accès.</p></div>
+          <div class="card benefit"><div class="icon">🔒</div><h3>Paiement sécurisé</h3><p>Le paiement est géré par Stripe, leader du paiement en ligne.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="cours" style="background:#fff">
+      <div class="container">
+        <h2 class="section-title">Catalogue des cours</h2>
+        <p class="section-sub">Choisissez un cours pour voir son programme.</p>
+        <div id="catalogue" class="grid"><p class="muted">Chargement des cours…</p></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="card">
+          <h2 class="section-title">À propos</h2>
+          <p>Je m'appelle Andrew. J'ai créé cette plateforme pour partager des formations claires et utiles. Chaque cours est découpé en leçons vidéo pour avancer pas à pas.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="container">
+        <h2>Prêt à commencer&nbsp;?</h2>
+        <p class="muted">Créez votre compte gratuitement, puis choisissez votre premier cours.</p>
+        <a class="btn" href="connexion.html?mode=inscription">Créer mon compte</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span data-year></span> <span data-site-name></span></span>
+      <span><a href="mentions-legales.html">Mentions légales &amp; CGV</a></span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase, renderLayout, courseCard, $ } from "./assets/app.js";
+
+    await renderLayout();
+    const box = $("#catalogue");
+
+    if (!supabase) {
+      box.innerHTML = `<p class="muted">Les cours apparaîtront ici une fois Supabase configuré.</p>`;
+    } else {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id, slug, title, subtitle, cover_url, price_cents, currency, teacher:profiles(full_name)")
+        .eq("is_published", true)
+        .order("created_at", { ascending: false });
+
+      if (error) box.innerHTML = `<p class="notice error">Impossible de charger les cours.</p>`;
+      else if (!data.length) box.innerHTML = `<p class="muted">Aucun cours publié pour le moment. Revenez bientôt !</p>`;
+      else box.innerHTML = data.map(courseCard).join("");
+    }
+  </script>
+</body>
+</html>
