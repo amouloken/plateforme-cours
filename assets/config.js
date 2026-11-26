@@ -7,6 +7,6 @@
 // ============================================================
 export const CONFIG = {
   SITE_NAME: "MouloAcadémie",
-  SUPABASE_URL: "https://VOTRE-PROJET.supabase.co",
-  SUPABASE_ANON_KEY: "VOTRE_CLE_ANON_PUBLIQUE",
+  SUPABASE_URL: "https://vyljqxkbvaogvbjmqgyz.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bGpxeGtidmFvZ3Ziam1xZ3l6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU2NTI5MjYsImV4cCI6MjExMTIyODkyNn0.yn2_4biz-jzO9Y2qkwYwu4cKwq8Hi5p4qR7-HpP3CBU",
 };
